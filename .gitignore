@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# PyTorch / ML artifacts
+*.pth
+*.pt
+*.ckpt
+
+# Data (usually too big for git)
+data/
+datasets/
+
+# Secrets / environment variables
+.env
+
+# OS / editor cruft
+.DS_Store
+.vscode/
+student_mental_health_burnout_1M.csv
