@@ -19,7 +19,7 @@ from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from typing import List, Tuple
 from pathlib import Path
 
-PATH = Path(r"C:\Users\arsen\OneDrive\Desktop\DSI\Abschlussprojekt\student_mental_health_100k_sample.csv")
+PATH = Path("student_mental_health_100k_sample.csv")
 TARGET = "burnout_score"
 FIG_DIR = Path("figures")
 SEED = 42
@@ -69,8 +69,9 @@ def select_features(df, feature_set="A", target=TARGET):
 
     X = df[cols].copy()
     y = df[target]
+    ids = df["id"]
 
-    return X,y
+    return X, y, ids
 
 
 def zero_labels(y: pd.Series) -> np.ndarray:
@@ -78,7 +79,7 @@ def zero_labels(y: pd.Series) -> np.ndarray:
 
     About a quarter of the target values sit at exactly 0.0 because the
     data-generating script clipped negative values. This label is not used for
-    training the regressor; it exists so the later hurdle model and the
+    training the regressor. It exists so the later hurdle model and the
     residual analysis can treat that group separately.
 
     Returns a NumPy array of int, same length as y.
@@ -99,7 +100,7 @@ def detect_column_types(X: pd.DataFrame) -> Tuple[List[str], List[str]]:
 def build_preprocessor(numeric_cols, categorical_cols):
     """ColumnTransformer: scale the numerics, one-hot encode the categoricals.
 
-    Returns the transformer UNFITTED, so the caller decides what it sees.
+    Returns the transformer unfitted, so the caller decides what it sees.
     
     """
     prep = ColumnTransformer(
@@ -112,21 +113,26 @@ def build_preprocessor(numeric_cols, categorical_cols):
 
     return prep
 
-def split_data(X, y, seed=SEED):
+def split_data(X, y, ids, seed=SEED):
     """60/20/20 train/validation/test split via two train_test_split calls.
+
+    ids is split on the same indices as X and y, so ids_test lines up row-for-row
+    with X_test and y_test for the predictions export.
 
     No stratification: the target is continuous, so there are no classes to
     balance.
 
-    Returns six objects in the order
-    X_train, X_val, X_test, y_train, y_val, y_test.
+    Returns nine objects in the order
+    X_train, X_val, X_test, y_train, y_val, y_test, ids_train, ids_val, ids_test.
     """
+    X_temp, X_test, y_temp, y_test, ids_temp, ids_test = train_test_split(
+        X, y, ids, test_size=0.20, random_state=seed)
+    val_size = 20/80
+    X_train, X_val, y_train, y_val, ids_train, ids_val = train_test_split(
+        X_temp, y_temp, ids_temp, test_size=val_size, random_state=seed)
 
-    X_temp, X_test, y_temp, y_test = train_test_split(X,y,test_size=0.20, random_state=seed)
-    val_size = 20/80 # 20% of the original, taken from the 80% remainder
-    X_train, X_val, y_train, y_val = train_test_split(X_temp, y_temp, test_size=val_size, random_state=seed)
-
-    return X_train, X_val, X_test, y_train, y_val, y_test
+    return (X_train, X_val, X_test, y_train, y_val, y_test,
+            ids_train, ids_val, ids_test)
 
 def make_loaders(X_train, X_val, X_test, y_train, y_val, y_test,
                  preprocessor: ColumnTransformer, batch_size=64, seed=SEED):
@@ -168,8 +174,10 @@ def make_loaders(X_train, X_val, X_test, y_train, y_val, y_test,
                                    drop_last=False),
         "test_loader":  DataLoader(test_ds,  batch_size=batch_size, shuffle=False,
                                    drop_last=False),
-        "preprocessor": preprocessor,     
+        "preprocessor": preprocessor,
         "n_features":   n_features,
+        "X_train":      X_train_s,        # transformed arrays for the sklearn models
+        "X_test":       X_test_s,
     }
 
 
@@ -180,15 +188,18 @@ def prepare_data(feature_set="A", batch_size=64, seed=SEED):
     sklearn baselines in baselines.py need them without the DataLoader wrapper.
     """
     df = load_data(PATH)
-    X,y = select_features(df=df,feature_set=feature_set,target=TARGET)
+    X, y, ids = select_features(df=df, feature_set=feature_set, target=TARGET)
     num_cols, cat_cols = detect_column_types(X=X)
-    prep = build_preprocessor(numeric_cols=num_cols,categorical_cols=cat_cols)
-    X_train, X_val, X_test, y_train, y_val, y_test = split_data(X,y, seed=seed)
+    prep = build_preprocessor(numeric_cols=num_cols, categorical_cols=cat_cols)
+    (X_train, X_val, X_test, y_train, y_val, y_test,
+     ids_train, ids_val, ids_test) = split_data(X, y, ids, seed=seed)
 
-    loaders_dict = make_loaders(X_train,X_val,X_test,y_train,y_val,y_test, preprocessor=prep,batch_size=batch_size, seed=seed)
+    loaders_dict = make_loaders(X_train, X_val, X_test, y_train, y_val, y_test,
+                                preprocessor=prep, batch_size=batch_size, seed=seed)
     loaders_dict["y_train"] = y_train
-    loaders_dict["y_val"] = y_val
-    loaders_dict["y_test"] = y_test
+    loaders_dict["y_val"]   = y_val
+    loaders_dict["y_test"]  = y_test
+    loaders_dict["id_test"] = ids_test
 
     return loaders_dict
 
