@@ -1,7 +1,8 @@
 # Student Burnout — Regression
 
-This is the machine-learning part of our group project. The goal is to predict
-a student's **burnout score** (a number between 0 and 10) from survey answers
+This is the machine-learning part of a group project and was my final project
+for the Data Science Institut Berlin training program. The goal is to predict
+a student's burnout score (a number between 0 and 10) from survey answers
 about their lifestyle and studies — sleep, study hours, screen time, exam
 pressure, and so on.
 
@@ -140,3 +141,17 @@ predictions can be shown next to the survey charts.
 - **No leakage in the pipeline.** The scaler and encoder are fitted on the
   training data only, then applied to validation and test. This stops
   information from the test set sneaking into training.
+
+## Notes on authorship
+
+This is the ML component of a group project: dataset selection and the
+dashboard were built by teammates. All code in this repository —
+`explore.py`, `features.py`, `baselines.py`, `model.py`, `compare.py` —
+was written by me from the shared project specification, as my final
+project for the Data Science Institut Berlin training.
+
+## Data
+
+The dataset was not collected by us — it originates from Kaggle (exact source
+link pending). A 100,000-row sample (`student_mental_health_burnout_1M.csv`)
+is committed in this repo.
